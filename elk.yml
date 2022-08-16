@@ -1,0 +1,72 @@
+#################################################
+# INFRASTRUCTURE YML CONFIGURATION VERSION 3.9  #
+#################################################  
+version: '3.9'
+
+services:
+  #################################################
+  # Elastic Search                                #
+  #################################################  
+  elasticsearch:
+    image: elasticsearch:${ELASTIC_SEARCH_VERSION}
+    container_name: ${ELASTIC_SEARCH_CONTAINER_NAME}
+    restart: unless-stopped
+    environment:
+      ES_JAVA_OPTS: "-Xmx256m -Xms256m"
+      ELASTIC_PASSWORD: ${ELASTIC_SEARCH_PASSWORD}
+      discovery.type: single-node
+    networks:
+      - elk_network
+    ports:
+      - "${ELASTIC_SEARCH_PORT_I}:${ELASTIC_SEARCH_PORT_I}"
+      - "${ELASTIC_SEARCH_PORT_II}:${ELASTIC_SEARCH_PORT_II}"
+    volumes:
+      - elasticsearch:/usr/share/elasticsearch/data:rw
+
+  #################################################
+  # LogStash                                      #
+  #################################################  
+  logstash:
+    image: logstash:${LOGSTASH_VERSION}
+    container_name: ${LOGSTASH_CONTAINER_NAME}
+    restart: unless-stopped
+    environment:
+      LS_JAVA_OPTS: "-Xmx256m -Xms256m"
+    depends_on:
+      - elasticsearch
+    networks:
+      - elk_network
+    ports:
+      - "${LOGSTASH_PORT}:${LOGSTASH_PORT}"
+    volumes:
+      - ./etc/logstash/pipeline:/usr/share/logstash/pipeline:ro
+
+  #################################################
+  # Kibana                                        #
+  #################################################  
+  kibana:
+    image: kibana:${KIBANA_VERSION}
+    container_name: ${KIBANA_CONTAINER_NAME}
+    restart: unless-stopped
+    depends_on:
+      - elasticsearch
+    environment:
+      ELASTICSEARCH_PASSWORD: ${ELASTIC_SEARCH_PASSWORD}
+      ELASTICSEARCH_USERNAME: ${ELASTIC_SEARCH_USERNAME}
+    networks:
+      - elk_network
+    ports:
+      - "${KIBANA_PORT}:${KIBANA_PORT}"
+
+networks:
+  elk_network:
+    name: ${ELK_NETWORK_NAME}
+    driver: bridge
+    
+volumes:
+  elasticsearch:
+    driver: local
+  logstash:
+    driver: local
+  kibana:
+    driver: local
